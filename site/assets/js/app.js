@@ -1,8 +1,13 @@
 import { ChoiceTask } from "./choice-task.js";
 import { downloadCsv } from "./csv-exporter.js";
 import { getSection, SECTIONS, TASKS } from "./config.js";
+import { getLanguage, setLanguage, t } from "./i18n.js";
 import { createSession, ensureResponse, SessionStore } from "./session-store.js";
 import { TraceTask } from "./trace-task.js";
+
+function sectionI18nKey(sectionId) {
+  return sectionId === "audio-trace" ? "audioTrace" : sectionId;
+}
 
 export class ExperimentApp {
   constructor(root = document) {
@@ -10,6 +15,10 @@ export class ExperimentApp {
     this.store = new SessionStore();
     this.session = this.store.load();
     this.activeTaskController = null;
+    this.currentView = null;
+    this.currentFinishStatus = null;
+    this.saveStatusKey = "shell.notStarted";
+    this.saveStatusVariables = {};
     this.cacheShell();
     this.bindShellEvents();
   }
@@ -17,23 +26,33 @@ export class ExperimentApp {
   cacheShell() {
     const find = (selector) => this.root.querySelector(selector);
     this.elements = {
+      siteTitle: find("#siteTitle"),
       sectionBadge: find("#sectionBadge"),
       headerSubtitle: find("#headerSubtitle"),
       progressPanel: find("#progressPanel"),
       progressText: find("#progressText"),
+      progressNote: find("#progressNote"),
       progressFill: find("#progressFill"),
       sectionSteps: find("#sectionSteps"),
       earlyExitButton: find("#earlyExitBtn"),
+      languageSwitch: find("#languageSwitch"),
+      languageButtons: [...this.root.querySelectorAll("[data-language]")],
       screen: find("#screen"),
       saveStatus: find("#saveStatus"),
+      storageNote: find("#storageNote"),
     };
   }
 
   bindShellEvents() {
     this.elements.earlyExitButton.addEventListener("click", () => this.endEarly());
+    this.elements.languageButtons.forEach((button) => {
+      button.addEventListener("click", () => this.changeLanguage(button.dataset.language));
+    });
   }
 
   mount() {
+    setLanguage(getLanguage());
+    this.applyShellLanguage();
     if (this.session?.status === "completed" || this.session?.status === "incomplete") {
       this.renderFinished(this.session.status);
       return;
@@ -41,10 +60,41 @@ export class ExperimentApp {
     this.renderWelcome();
   }
 
+  changeLanguage(language) {
+    if (language === getLanguage()) return;
+    setLanguage(language);
+    this.applyShellLanguage();
+
+    if (this.currentView === "task" && this.session?.status === "active") {
+      const task = TASKS[this.session.currentTaskIndex];
+      this.updateChrome(task);
+      this.activeTaskController?.updateLanguage();
+    } else if (this.currentView === "finished") {
+      this.renderFinished(this.currentFinishStatus);
+    } else {
+      this.renderWelcome();
+    }
+  }
+
+  applyShellLanguage() {
+    document.title = t("site.title");
+    this.elements.siteTitle.textContent = t("site.title");
+    this.elements.earlyExitButton.textContent = t("shell.earlyExit");
+    this.elements.progressPanel.setAttribute("aria-label", t("shell.progressAria"));
+    this.elements.progressNote.textContent = t("shell.noBack");
+    this.elements.storageNote.textContent = t("shell.localOnly");
+    this.elements.languageSwitch.setAttribute("aria-label", t("shell.language"));
+    this.elements.languageButtons.forEach((button) => {
+      button.setAttribute("aria-pressed", String(button.dataset.language === getLanguage()));
+    });
+    this.updateSaveStatus(this.saveStatusKey, this.saveStatusVariables);
+  }
+
   renderWelcome() {
     this.destroyActiveTask();
-    this.elements.sectionBadge.textContent = "实验说明";
-    this.elements.headerSubtitle.textContent = "书法书写与音乐匹配度网页调研";
+    this.currentView = "welcome";
+    this.elements.sectionBadge.textContent = t("shell.instructions");
+    this.elements.headerSubtitle.textContent = t("site.subtitle");
     this.elements.progressPanel.classList.add("hidden");
     this.elements.earlyExitButton.classList.add("hidden");
 
@@ -52,12 +102,15 @@ export class ExperimentApp {
       ? `
         <div class="resume-card">
           <div>
-            <strong>检测到未完成的实验</strong>
-            <span>已保存到第 ${Math.min(this.session.currentTaskIndex + 1, TASKS.length)} / ${TASKS.length} 题</span>
+            <strong>${t("welcome.resumeTitle")}</strong>
+            <span>${t("welcome.resumeProgress", {
+              current: Math.min(this.session.currentTaskIndex + 1, TASKS.length),
+              total: TASKS.length,
+            })}</span>
           </div>
           <div class="resume-actions">
-            <button class="btn primary" id="resumeBtn">继续上次实验</button>
-            <button class="btn outline" id="exportSavedBtn">结束并导出未完成数据</button>
+            <button class="btn primary" id="resumeBtn">${t("welcome.resume")}</button>
+            <button class="btn outline" id="exportSavedBtn">${t("welcome.exportIncomplete")}</button>
           </div>
         </div>
       `
@@ -65,31 +118,31 @@ export class ExperimentApp {
 
     this.elements.screen.innerHTML = `
       <section class="welcome-card">
-        <span class="welcome-kicker">匿名网页实验 · 共 3 部分 18 道题</span>
-        <h2>请在安静环境中完成书法与音乐匹配实验</h2>
-        <p class="welcome-lead">实验将依次进行笔画描摹、书法与音乐匹配选择、伴随音乐描摹。题目顺序固定，提交后不能返回修改。</p>
+        <span class="welcome-kicker">${t("welcome.kicker")}</span>
+        <h2>${t("welcome.title")}</h2>
+        <p class="welcome-lead">${t("welcome.lead")}</p>
         <div class="instruction-grid">
           <article>
             <span>01</span>
-            <h3>逐笔描摹</h3>
-            <p>每完成一笔，至少选择一个、最多选择三个运动状态。</p>
+            <h3>${t("welcome.traceTitle")}</h3>
+            <p>${t("welcome.traceBody")}</p>
           </article>
           <article>
             <span>02</span>
-            <h3>完成试听</h3>
-            <p>选择题需要完整听完规定音频，之后才能提交答案。</p>
+            <h3>${t("welcome.listenTitle")}</h3>
+            <p>${t("welcome.listenBody")}</p>
           </article>
           <article>
             <span>03</span>
-            <h3>保存结果</h3>
-            <p>完成或提前结束时，请下载 CSV 文件并发送给研究人员。</p>
+            <h3>${t("welcome.saveTitle")}</h3>
+            <p>${t("welcome.saveBody")}</p>
           </article>
         </div>
         ${resumePanel}
         <div class="welcome-actions">
-          <button class="btn primary large" id="startExperimentBtn">开始新的实验</button>
+          <button class="btn primary large" id="startExperimentBtn">${t("welcome.start")}</button>
         </div>
-        <p class="privacy-note">本实验不采集姓名、年龄等个人信息，也不保存描摹轨迹。</p>
+        <p class="privacy-note">${t("welcome.privacy")}</p>
       </section>
     `;
 
@@ -99,13 +152,13 @@ export class ExperimentApp {
       ?.addEventListener("click", () => this.resumeSession());
     this.elements.screen.querySelector("#exportSavedBtn")
       ?.addEventListener("click", () => this.endEarly());
-    this.updateSaveStatus("实验数据尚未开始");
+    this.updateSaveStatus("shell.notStarted");
   }
 
   startNewSession() {
     if (
       this.session?.status === "active"
-      && !window.confirm("开始新实验会替换当前未完成进度，确定继续吗？")
+      && !window.confirm(t("confirm.replace"))
     ) return;
 
     this.session = createSession();
@@ -125,6 +178,7 @@ export class ExperimentApp {
       return;
     }
 
+    this.currentView = "task";
     const task = TASKS[this.session.currentTaskIndex];
     const response = ensureResponse(this.session, task);
     this.store.save(this.session);
@@ -168,13 +222,19 @@ export class ExperimentApp {
 
   updateChrome(task) {
     const section = getSection(task.sectionId);
+    const key = sectionI18nKey(task.sectionId);
     const overallQuestion = this.session.currentTaskIndex + 1;
     const sectionTasks = TASKS.filter((candidate) => candidate.sectionId === task.sectionId);
-    this.elements.sectionBadge.textContent = `第 ${section.order} 部分`;
-    this.elements.headerSubtitle.textContent = section.title;
+    this.elements.sectionBadge.textContent = t("section.badge", { order: section.order });
+    this.elements.headerSubtitle.textContent = t(`section.${key}.title`);
     this.elements.progressPanel.classList.remove("hidden");
     this.elements.earlyExitButton.classList.remove("hidden");
-    this.elements.progressText.textContent = `总进度 ${overallQuestion} / ${TASKS.length} · 本部分 ${task.questionOrder} / ${sectionTasks.length}`;
+    this.elements.progressText.textContent = t("progress.summary", {
+      overall: overallQuestion,
+      total: TASKS.length,
+      current: task.questionOrder,
+      sectionTotal: sectionTasks.length,
+    });
     this.elements.progressFill.style.width = `${((overallQuestion - 1) / TASKS.length) * 100}%`;
     this.elements.sectionSteps.innerHTML = SECTIONS.map((item) => {
       const state = item.order < section.order
@@ -182,13 +242,14 @@ export class ExperimentApp {
         : item.order === section.order
           ? "current"
           : "";
-      return `<div class="section-step ${state}"><i></i><span>${item.shortTitle}</span></div>`;
+      const itemKey = sectionI18nKey(item.id);
+      return `<div class="section-step ${state}"><i></i><span>${t(`section.${itemKey}.short`)}</span></div>`;
     }).join("");
   }
 
   saveProgress() {
     this.store.save(this.session);
-    this.updateSaveStatus("进度已自动保存在本机");
+    this.updateSaveStatus("save.auto");
   }
 
   advanceTask() {
@@ -206,7 +267,7 @@ export class ExperimentApp {
 
   endEarly() {
     if (!this.session || this.session.status !== "active") return;
-    const confirmed = window.confirm("确定提前结束吗？系统会下载当前未完成数据，之后不能继续本次实验。");
+    const confirmed = window.confirm(t("confirm.earlyExit"));
     if (!confirmed) return;
 
     this.destroyActiveTask();
@@ -219,19 +280,25 @@ export class ExperimentApp {
 
   renderFinished(status) {
     this.destroyActiveTask();
+    this.currentView = "finished";
+    this.currentFinishStatus = status;
     this.elements.progressPanel.classList.add("hidden");
     this.elements.earlyExitButton.classList.add("hidden");
-    this.elements.sectionBadge.textContent = status === "completed" ? "实验完成" : "实验已结束";
-    this.elements.headerSubtitle.textContent = "请保存并发送实验数据";
+    this.elements.sectionBadge.textContent = t(status === "completed"
+      ? "finish.completedBadge"
+      : "finish.incompleteBadge");
+    this.elements.headerSubtitle.textContent = t("finish.subtitle");
 
     const strokeCount = Object.values(this.session.responses)
       .reduce((total, response) => total + (response.strokes?.length || 0), 0);
     const choiceCount = Object.values(this.session.responses)
       .filter((response) => response.selectedOption).length;
-    const title = status === "completed" ? "感谢完成全部实验" : "未完成数据已经保留";
-    const description = status === "completed"
-      ? "请下载 CSV 文件，并按照研究人员提供的方式发送。"
-      : "你仍然可以再次下载当前的不完整 CSV 文件并发送给研究人员。";
+    const title = t(status === "completed"
+      ? "finish.completedTitle"
+      : "finish.incompleteTitle");
+    const description = t(status === "completed"
+      ? "finish.completedBody"
+      : "finish.incompleteBody");
 
     this.elements.screen.innerHTML = `
       <section class="finish-card">
@@ -240,15 +307,15 @@ export class ExperimentApp {
         <h2>${title}</h2>
         <p>${description}</p>
         <div class="result-summary">
-          <div><strong>${strokeCount}</strong><span>已记录笔画</span></div>
-          <div><strong>${choiceCount}</strong><span>已完成选择题</span></div>
-          <div><strong>${this.session.currentTaskIndex}</strong><span>已推进题目</span></div>
+          <div><strong>${strokeCount}</strong><span>${t("finish.strokes")}</span></div>
+          <div><strong>${choiceCount}</strong><span>${t("finish.choices")}</span></div>
+          <div><strong>${this.session.currentTaskIndex}</strong><span>${t("finish.questions")}</span></div>
         </div>
         <div class="finish-actions">
-          <button class="btn primary large" id="downloadCsvBtn">下载 CSV 数据</button>
-          <button class="btn outline" id="newSessionBtn">开始新的实验</button>
+          <button class="btn primary large" id="downloadCsvBtn">${t("finish.download")}</button>
+          <button class="btn outline" id="newSessionBtn">${t("finish.new")}</button>
         </div>
-        <p class="privacy-note">下载完成后，请确认文件已保存在设备中。</p>
+        <p class="privacy-note">${t("finish.downloadHint")}</p>
       </section>
     `;
     this.elements.screen.querySelector("#downloadCsvBtn")
@@ -259,11 +326,13 @@ export class ExperimentApp {
         this.session = null;
         this.renderWelcome();
       });
-    this.updateSaveStatus(status === "completed" ? "实验已完成" : "实验以未完成状态结束");
+    this.updateSaveStatus(status === "completed" ? "save.completed" : "save.incomplete");
   }
 
-  updateSaveStatus(text) {
-    this.elements.saveStatus.textContent = text;
+  updateSaveStatus(key, variables = {}) {
+    this.saveStatusKey = key;
+    this.saveStatusVariables = variables;
+    this.elements.saveStatus.textContent = t(key, variables);
   }
 
   destroyActiveTask() {

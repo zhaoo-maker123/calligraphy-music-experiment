@@ -157,17 +157,6 @@ export const TASKS = Object.freeze([
   ...audioTraceTasks,
 ]);
 
-export const UI_TEXT = Object.freeze({
-  waitingStatus: "等待开始",
-  tracingStatus: "描摹进行中",
-  tracingPrompt: "请在书法图片上按住鼠标或手指，完成当前笔画",
-  idlePrompt: "点击开始后，在左侧书法图片上描摹当前笔画",
-  recordedPrompt: "轨迹已记录，请至少选择一个运动状态",
-  readyPrompt: "轨迹和运动状态已记录，可以确认本笔",
-  completedPrompt: "本笔已标记完成，可以描摹下一笔或完成本字",
-  emptyTimeline: "尚未选择状态",
-});
-
 export function getSection(sectionId) {
   return SECTIONS.find((section) => section.id === sectionId);
 }
@@ -184,7 +173,8 @@ export function applyStateSelection(currentStates, state) {
   return retainedStates.slice(-EXPERIMENT_CONFIG.maxStates);
 }
 
-export function formatStrokeNumber(number) {
+export function formatStrokeNumber(number, language = "zh") {
+  if (language === "en") return String(number);
   const labels = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十"];
   return labels[number] || String(number);
 }

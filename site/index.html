@@ -19,8 +19,14 @@
   <main class="app-shell">
     <header class="site-header">
       <div>
-        <span class="badge" id="sectionBadge">实验说明</span>
-        <h1>书法与音乐匹配度实验</h1>
+        <div class="header-topline">
+          <span class="badge" id="sectionBadge">实验说明</span>
+          <div class="language-switch" id="languageSwitch" role="group" aria-label="界面语言">
+            <button type="button" data-language="zh" aria-pressed="true">中文</button>
+            <button type="button" data-language="en" aria-pressed="false">EN</button>
+          </div>
+        </div>
+        <h1 id="siteTitle">书法与音乐匹配度实验</h1>
         <p class="hint" id="headerSubtitle">书法书写与音乐匹配度网页调研</p>
       </div>
       <button class="btn outline compact hidden" id="earlyExitBtn">提前结束并导出</button>
@@ -29,7 +35,7 @@
     <section class="progress-panel hidden" id="progressPanel" aria-label="实验进度">
       <div class="progress-copy">
         <strong id="progressText"></strong>
-        <span>题目提交后不能返回修改</span>
+        <span id="progressNote">题目提交后不能返回修改</span>
       </div>
       <div class="overall-progress"><i id="progressFill"></i></div>
       <div class="section-steps" id="sectionSteps"></div>
@@ -45,7 +51,7 @@
 
     <footer class="site-footer">
       <span id="saveStatus">实验数据尚未开始</span>
-      <span>数据仅保存在当前浏览器，完成后请下载 CSV</span>
+      <span id="storageNote">数据仅保存在当前浏览器，完成后请下载 CSV</span>
     </footer>
   </main>
 

@@ -57,6 +57,38 @@ button:focus-visible {
   margin-bottom: 20px;
 }
 
+.header-topline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.language-switch {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid #cce4ed;
+  border-radius: 999px;
+  background: #f5fbfd;
+}
+
+.language-switch button {
+  min-width: 45px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #60747d;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.language-switch button[aria-pressed="true"] {
+  background: var(--blue);
+  color: white;
+}
+
 h1,
 h2,
 h3,
