@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="书法书写运动状态与音乐匹配度网页调研">
+  <meta name="theme-color" content="#fffbea">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:title" content="书法与音乐匹配度实验">
+  <meta property="og:description" content="描摹书法笔画、聆听音乐，并判断二者的匹配度。">
+  <meta property="og:image" content="assets/images/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <title>书法与音乐匹配度实验</title>
+  <link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="site-header">
+      <div>
+        <span class="badge" id="sectionBadge">实验说明</span>
+        <h1>书法与音乐匹配度实验</h1>
+        <p class="hint" id="headerSubtitle">书法书写与音乐匹配度网页调研</p>
+      </div>
+      <button class="btn outline compact hidden" id="earlyExitBtn">提前结束并导出</button>
+    </header>
+
+    <section class="progress-panel hidden" id="progressPanel" aria-label="实验进度">
+      <div class="progress-copy">
+        <strong id="progressText"></strong>
+        <span>题目提交后不能返回修改</span>
+      </div>
+      <div class="overall-progress"><i id="progressFill"></i></div>
+      <div class="section-steps" id="sectionSteps"></div>
+    </section>
+
+    <section id="screen" aria-live="polite">
+      <section class="welcome-card">
+        <span class="welcome-kicker">本地启动提示</span>
+        <h2>页面正在加载</h2>
+        <p class="welcome-lead">如果此提示持续显示，说明页面被直接作为本地文件打开。请关闭本页，回到工程根目录双击“本地预览.bat”。</p>
+      </section>
+    </section>
+
+    <footer class="site-footer">
+      <span id="saveStatus">实验数据尚未开始</span>
+      <span>数据仅保存在当前浏览器，完成后请下载 CSV</span>
+    </footer>
+  </main>
+
+  <script type="module" src="assets/js/main.js"></script>
+</body>
+</html>

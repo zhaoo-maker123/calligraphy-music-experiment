@@ -1,0 +1,9 @@
+.git
+.gitignore
+**/.DS_Store
+*.zip
+prototype/
+书法图片/
+__MACOSX/
+tests/
+README.md
