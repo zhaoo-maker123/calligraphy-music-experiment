@@ -241,7 +241,8 @@ export class TraceTask {
       ]);
       await this.onStroke({ strokeNumber, states }, imageBlob);
       this.previewByStroke.set(strokeNumber, preview);
-    } catch {
+    } catch (error) {
+      console.error("Stroke image save failed.", error);
       this.savingStroke = false;
       this.setValidation("trace.validation.imageSave");
       this.updateLanguage();

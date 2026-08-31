@@ -1,3 +1,7 @@
+import { withTimeout } from "./async-utils.js";
+
+const PNG_CREATION_TIMEOUT_MS = 10000;
+
 export class CanvasTracer {
   constructor({ canvas, image, onTraceChange }) {
     this.canvas = canvas;
@@ -132,12 +136,16 @@ export class CanvasTracer {
     const sourceHeight = this.canvas.clientHeight;
     const scale = longEdge / Math.max(sourceWidth, sourceHeight);
     const output = this.createStrokeCanvas(sourceWidth * scale, sourceHeight * scale);
-    return new Promise((resolve, reject) => {
-      output.toBlob((blob) => {
-        if (blob) resolve(blob);
-        else reject(new Error("The stroke PNG could not be created."));
-      }, "image/png");
-    });
+    return withTimeout(
+      new Promise((resolve, reject) => {
+        output.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("The stroke PNG could not be created."));
+        }, "image/png");
+      }),
+      PNG_CREATION_TIMEOUT_MS,
+      "Creating the stroke PNG timed out.",
+    );
   }
 
   destroy() {

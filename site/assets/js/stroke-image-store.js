@@ -1,7 +1,10 @@
+import { withTimeout } from "./async-utils.js";
+
 const DATABASE_NAME = "calligraphy-experiment-strokes";
 const DATABASE_VERSION = 1;
 const STORE_NAME = "stroke-images";
 const SESSION_INDEX = "session-id";
+const STORAGE_TIMEOUT_MS = 10000;
 
 export function createStrokeImageId(sessionId, taskId, strokeNumber) {
   return `${sessionId}:${taskId}:${String(strokeNumber).padStart(3, "0")}`;
@@ -31,15 +34,31 @@ export class StrokeImageStore {
 
   open() {
     if (this.databasePromise) return this.databasePromise;
-    this.databasePromise = new Promise((resolve, reject) => {
+    const opening = new Promise((resolve, reject) => {
       const request = this.indexedDb.open(DATABASE_NAME, DATABASE_VERSION);
       request.onupgradeneeded = () => {
         const database = request.result;
-        const store = database.createObjectStore(STORE_NAME, { keyPath: "id" });
-        store.createIndex(SESSION_INDEX, "sessionId", { unique: false });
+        if (!database.objectStoreNames.contains(STORE_NAME)) {
+          const store = database.createObjectStore(STORE_NAME, { keyPath: "id" });
+          store.createIndex(SESSION_INDEX, "sessionId", { unique: false });
+        }
       };
-      request.onsuccess = () => resolve(request.result);
+      request.onsuccess = () => {
+        const database = request.result;
+        database.onversionchange = () => database.close();
+        resolve(database);
+      };
       request.onerror = () => reject(request.error);
+      request.onblocked = () => reject(new Error("The stroke image database is blocked by another page."));
+    });
+
+    this.databasePromise = withTimeout(
+      opening,
+      STORAGE_TIMEOUT_MS,
+      "Opening the stroke image database timed out.",
+    ).catch((error) => {
+      this.databasePromise = null;
+      throw error;
     });
     return this.databasePromise;
   }
@@ -48,7 +67,7 @@ export class StrokeImageStore {
     const database = await this.open();
     const transaction = database.transaction(STORE_NAME, "readwrite");
     const completion = transactionComplete(transaction);
-    transaction.objectStore(STORE_NAME).put({
+    const request = transaction.objectStore(STORE_NAME).put({
       id: createStrokeImageId(sessionId, task.id, strokeNumber),
       sessionId,
       taskId: task.id,
@@ -57,7 +76,11 @@ export class StrokeImageStore {
       strokeNumber,
       blob,
     });
-    await completion;
+    await withTimeout(
+      Promise.all([requestResult(request), completion]),
+      STORAGE_TIMEOUT_MS,
+      "Saving the stroke image timed out.",
+    );
   }
 
   async getSessionImages(sessionId) {
@@ -65,8 +88,11 @@ export class StrokeImageStore {
     const transaction = database.transaction(STORE_NAME, "readonly");
     const completion = transactionComplete(transaction);
     const request = transaction.objectStore(STORE_NAME).index(SESSION_INDEX).getAll(sessionId);
-    const records = await requestResult(request);
-    await completion;
+    const [records] = await withTimeout(
+      Promise.all([requestResult(request), completion]),
+      STORAGE_TIMEOUT_MS,
+      "Reading the stroke images timed out.",
+    );
     return records.sort((left, right) => (
       left.sectionOrder - right.sectionOrder
       || left.questionOrder - right.questionOrder
@@ -86,6 +112,10 @@ export class StrokeImageStore {
       transaction.objectStore(STORE_NAME).delete(cursor.primaryKey);
       cursor.continue();
     };
-    await transactionComplete(transaction);
+    await withTimeout(
+      transactionComplete(transaction),
+      STORAGE_TIMEOUT_MS,
+      "Deleting the stroke images timed out.",
+    );
   }
 }
