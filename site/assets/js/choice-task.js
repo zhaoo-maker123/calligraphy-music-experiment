@@ -26,6 +26,7 @@ export class ChoiceTask {
         <button class="image-option" data-option="${option.id}" type="button">
           <img src="${option.src}" alt="${t("choice.imageAlt", { option: option.id })}">
           <span class="option-label"><i></i><span data-image-label="${option.id}">${t("choice.imageLabel", { option: option.id })}</span></span>
+          ${option.captionKey ? `<span class="option-caption" data-caption-key="${option.captionKey}">${t(option.captionKey)}</span>` : ""}
         </button>
       `).join("");
       this.root.innerHTML = `
@@ -100,6 +101,7 @@ export class ChoiceTask {
       audioFeedback: find("#audioFeedback"),
       imageOptions: [...this.root.querySelectorAll(".image-option")],
       imageLabels: [...this.root.querySelectorAll("[data-image-label]")],
+      optionCaptions: [...this.root.querySelectorAll("[data-caption-key]")],
       candidateAudioButtons: [...this.root.querySelectorAll(".audio-candidate-btn")],
       selectOptionButtons: [...this.root.querySelectorAll(".select-option-btn")],
       audioTitles: [...this.root.querySelectorAll("[data-audio-title]")],
@@ -247,6 +249,9 @@ export class ChoiceTask {
       });
       this.elements.imageLabels.forEach((label) => {
         label.textContent = t("choice.imageLabel", { option: label.dataset.imageLabel });
+      });
+      this.elements.optionCaptions.forEach((caption) => {
+        caption.textContent = t(caption.dataset.captionKey);
       });
     } else {
       this.elements.kicker.textContent = t("choice.audioKicker");

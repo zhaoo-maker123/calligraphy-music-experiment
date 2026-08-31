@@ -52,4 +52,21 @@ test("笔画状态最多三项，并保持原有互斥规则", () => {
   states = applyStateSelection(states, "间歇换气");
   states = applyStateSelection(states, "结束");
   assert.deepEqual(states, ["开始", "减速", "结束"]);
+
+  states = applyStateSelection(states, "结束");
+  assert.deepEqual(states, ["开始", "减速"]);
+  states = applyStateSelection(states, "开始");
+  assert.deepEqual(states, ["减速"]);
+});
+
+test("第二部分第五题包含三张图片对应的诗句", () => {
+  const task = TASKS.find((item) => item.id === "match-05");
+  assert.deepEqual(
+    task.options.map((option) => [option.id, option.value, option.captionKey]),
+    [
+      ["A", "奔蛇走虺势入座.png", "match.q05.a"],
+      ["B", "志在新奇无定则.png", "match.q05.b"],
+      ["C", "古瘦漓骊半无墨.png", "match.q05.c"],
+    ],
+  );
 });

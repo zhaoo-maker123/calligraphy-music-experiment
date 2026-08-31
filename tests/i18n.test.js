@@ -14,6 +14,10 @@ test("界面可以在中文和英文之间切换", () => {
   assert.equal(t("welcome.start"), "Start a new experiment");
   assert.equal(formatStrokeNumber(3, getLanguage()), "3");
   assert.equal(translateState("加速"), "Accelerating");
+  assert.equal(
+    t("match.q05.a"),
+    "Racing snakes and darting vipers surge into the hall",
+  );
 });
 
 test("带题号的动态文案可以正确替换变量", () => {

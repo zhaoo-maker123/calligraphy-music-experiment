@@ -1,10 +1,11 @@
 export const EXPERIMENT_CONFIG = Object.freeze({
-  schemaVersion: 1,
-  storageKey: "calligraphy-match-experiment-v1",
+  schemaVersion: 2,
+  storageKey: "calligraphy-match-experiment-v2",
   maxStates: 3,
   minimumTracePoints: 4,
   previewWidth: 116,
   previewHeight: 128,
+  strokeImageLongEdge: 1000,
   stateLabels: Object.freeze(["加速", "减速", "间歇换气", "结束", "开始"]),
   stateGroups: Object.freeze([
     Object.freeze(["加速", "减速"]),
@@ -115,9 +116,24 @@ const matchTasks = [
     audio: "assets/media/type2/q05/question.mp3",
     audioValue: "奔蛇.mp3",
     options: [
-      { id: "A", src: "assets/media/type2/q05/a.png", value: "图片16.png" },
-      { id: "B", src: "assets/media/type2/q05/b.png", value: "图片17.png" },
-      { id: "C", src: "assets/media/type2/q05/c.png", value: "图片18.png" },
+      {
+        id: "A",
+        src: "assets/media/type2/q05/a.png",
+        value: "奔蛇走虺势入座.png",
+        captionKey: "match.q05.a",
+      },
+      {
+        id: "B",
+        src: "assets/media/type2/q05/b.png",
+        value: "志在新奇无定则.png",
+        captionKey: "match.q05.b",
+      },
+      {
+        id: "C",
+        src: "assets/media/type2/q05/c.png",
+        value: "古瘦漓骊半无墨.png",
+        captionKey: "match.q05.c",
+      },
     ],
   },
   {
@@ -162,6 +178,9 @@ export function getSection(sectionId) {
 }
 
 export function applyStateSelection(currentStates, state) {
+  if (currentStates.includes(state)) {
+    return currentStates.filter((item) => item !== state);
+  }
   const exclusiveGroup = EXPERIMENT_CONFIG.stateGroups.find((group) => (
     group.includes(state)
   ));

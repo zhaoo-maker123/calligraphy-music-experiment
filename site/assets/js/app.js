@@ -1,9 +1,10 @@
 import { ChoiceTask } from "./choice-task.js";
-import { downloadCsv } from "./csv-exporter.js";
 import { getSection, SECTIONS, TASKS } from "./config.js";
 import { getLanguage, setLanguage, t } from "./i18n.js";
 import { createSession, ensureResponse, SessionStore } from "./session-store.js";
+import { StrokeImageStore } from "./stroke-image-store.js";
 import { TraceTask } from "./trace-task.js";
+import { createExperimentZip, downloadBlob } from "./zip-exporter.js";
 
 function sectionI18nKey(sectionId) {
   return sectionId === "audio-trace" ? "audioTrace" : sectionId;
@@ -13,10 +14,12 @@ export class ExperimentApp {
   constructor(root = document) {
     this.root = root;
     this.store = new SessionStore();
+    this.strokeImageStore = new StrokeImageStore();
     this.session = this.store.load();
     this.activeTaskController = null;
     this.currentView = null;
     this.currentFinishStatus = null;
+    this.exporting = false;
     this.saveStatusKey = "shell.notStarted";
     this.saveStatusVariables = {};
     this.cacheShell();
@@ -155,12 +158,15 @@ export class ExperimentApp {
     this.updateSaveStatus("shell.notStarted");
   }
 
-  startNewSession() {
+  async startNewSession() {
     if (
       this.session?.status === "active"
       && !window.confirm(t("confirm.replace"))
     ) return;
 
+    if (this.session?.sessionId) {
+      await this.strokeImageStore.deleteSession(this.session.sessionId);
+    }
     this.session = createSession();
     this.store.save(this.session);
     this.renderCurrentTask();
@@ -190,9 +196,20 @@ export class ExperimentApp {
         root: this.elements.screen,
         task,
         response,
-        onStroke: (stroke) => {
+        onStroke: async (stroke, imageBlob) => {
+          await this.strokeImageStore.save({
+            sessionId: this.session.sessionId,
+            task,
+            strokeNumber: stroke.strokeNumber,
+            blob: imageBlob,
+          });
           response.strokes.push(stroke);
-          this.saveProgress();
+          try {
+            this.saveProgress();
+          } catch (error) {
+            response.strokes.pop();
+            throw error;
+          }
         },
         onAudioCompleted: () => {
           response.audioCompleted = true;
@@ -265,7 +282,7 @@ export class ExperimentApp {
     this.renderFinished("completed");
   }
 
-  endEarly() {
+  async endEarly() {
     if (!this.session || this.session.status !== "active") return;
     const confirmed = window.confirm(t("confirm.earlyExit"));
     if (!confirmed) return;
@@ -274,8 +291,34 @@ export class ExperimentApp {
     this.session.status = "incomplete";
     this.session.endedAt = new Date().toISOString();
     this.store.save(this.session);
-    downloadCsv(this.session, TASKS);
+    await this.downloadArchive();
     this.renderFinished("incomplete");
+  }
+
+  async downloadArchive(button = null) {
+    if (this.exporting) return false;
+    this.exporting = true;
+    if (button) {
+      button.disabled = true;
+      button.textContent = t("export.preparing");
+    }
+    this.updateSaveStatus("export.preparing");
+    try {
+      const images = await this.strokeImageStore.getSessionImages(this.session.sessionId);
+      const archive = await createExperimentZip(this.session, TASKS, images);
+      downloadBlob(archive.blob, archive.filename);
+      return true;
+    } catch {
+      window.alert(t("export.failed"));
+      return false;
+    } finally {
+      this.exporting = false;
+      const currentButton = this.elements.screen.querySelector("#downloadArchiveBtn");
+      if (currentButton) {
+        currentButton.disabled = false;
+        currentButton.textContent = t("finish.download");
+      }
+    }
   }
 
   renderFinished(status) {
@@ -312,16 +355,17 @@ export class ExperimentApp {
           <div><strong>${this.session.currentTaskIndex}</strong><span>${t("finish.questions")}</span></div>
         </div>
         <div class="finish-actions">
-          <button class="btn primary large" id="downloadCsvBtn">${t("finish.download")}</button>
+          <button class="btn primary large" id="downloadArchiveBtn" ${this.exporting ? "disabled" : ""}>${t(this.exporting ? "export.preparing" : "finish.download")}</button>
           <button class="btn outline" id="newSessionBtn">${t("finish.new")}</button>
         </div>
         <p class="privacy-note">${t("finish.downloadHint")}</p>
       </section>
     `;
-    this.elements.screen.querySelector("#downloadCsvBtn")
-      .addEventListener("click", () => downloadCsv(this.session, TASKS));
+    this.elements.screen.querySelector("#downloadArchiveBtn")
+      .addEventListener("click", (event) => this.downloadArchive(event.currentTarget));
     this.elements.screen.querySelector("#newSessionBtn")
-      .addEventListener("click", () => {
+      .addEventListener("click", async () => {
+        await this.strokeImageStore.deleteSession(this.session.sessionId);
         this.store.clear();
         this.session = null;
         this.renderWelcome();

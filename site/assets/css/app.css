@@ -702,6 +702,16 @@ h3 {
   border: 4px solid var(--blue);
 }
 
+.option-caption {
+  display: block;
+  min-height: 2.8em;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.4;
+  text-align: center;
+}
+
 .choice-submit-row {
   display: flex;
   align-items: center;

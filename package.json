@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "node --check site/assets/js/config.js && node --check site/assets/js/i18n.js && node --check site/assets/js/session-store.js && node --check site/assets/js/csv-exporter.js && node --check site/assets/js/audio-controller.js && node --check site/assets/js/canvas-tracer.js && node --check site/assets/js/trace-task.js && node --check site/assets/js/choice-task.js && node --check site/assets/js/app.js && node --check site/assets/js/main.js",
+    "check": "node --check site/assets/js/config.js && node --check site/assets/js/i18n.js && node --check site/assets/js/session-store.js && node --check site/assets/js/stroke-image-store.js && node --check site/assets/js/csv-exporter.js && node --check site/assets/js/zip-exporter.js && node --check site/assets/js/audio-controller.js && node --check site/assets/js/canvas-tracer.js && node --check site/assets/js/trace-task.js && node --check site/assets/js/choice-task.js && node --check site/assets/js/app.js && node --check site/assets/js/main.js",
     "test": "node --test tests/*.test.js"
   },
   "engines": {

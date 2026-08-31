@@ -20,6 +20,7 @@ export class TraceTask {
     this.previewByStroke = new Map();
     this.audioPlaybackStatus = response.audioCompleted ? "ended" : "waiting";
     this.validationKey = null;
+    this.savingStroke = false;
 
     this.render();
     this.cacheElements();
@@ -178,7 +179,8 @@ export class TraceTask {
 
   updateTraceUi() {
     const canConfirm = this.tracer.points.length >= EXPERIMENT_CONFIG.minimumTracePoints
-      && this.states.length > 0;
+      && this.states.length > 0
+      && !this.savingStroke;
 
     this.elements.confirmButton.disabled = !canConfirm;
     this.elements.stateCount.textContent = String(this.states.length);
@@ -187,7 +189,9 @@ export class TraceTask {
       : t("trace.emptyStates");
     this.elements.stateButtons.forEach((button) => {
       button.classList.toggle("selected", this.states.includes(button.dataset.state));
+      button.disabled = this.savingStroke;
     });
+    this.elements.redoButton.disabled = this.savingStroke;
     this.updateDrawPrompt();
   }
 
@@ -212,21 +216,39 @@ export class TraceTask {
     }
   }
 
-  confirmStroke() {
+  async confirmStroke() {
     if (
+      this.savingStroke
+      ||
       this.tracer.points.length < EXPERIMENT_CONFIG.minimumTracePoints
       || !this.states.length
     ) return;
 
     const strokeNumber = this.response.strokes.length + 1;
     const states = [...this.states];
-    const preview = this.tracer.createPreview(
-      EXPERIMENT_CONFIG.previewWidth,
-      EXPERIMENT_CONFIG.previewHeight,
-    );
-    this.previewByStroke.set(strokeNumber, preview);
-    this.onStroke({ strokeNumber, states });
+    this.savingStroke = true;
+    this.elements.confirmButton.disabled = true;
+    this.elements.confirmButton.textContent = t("trace.savingStroke");
+    this.setValidation(null);
 
+    try {
+      const [preview, imageBlob] = await Promise.all([
+        Promise.resolve(this.tracer.createPreview(
+          EXPERIMENT_CONFIG.previewWidth,
+          EXPERIMENT_CONFIG.previewHeight,
+        )),
+        this.tracer.createStrokePngBlob(EXPERIMENT_CONFIG.strokeImageLongEdge),
+      ]);
+      await this.onStroke({ strokeNumber, states }, imageBlob);
+      this.previewByStroke.set(strokeNumber, preview);
+    } catch {
+      this.savingStroke = false;
+      this.setValidation("trace.validation.imageSave");
+      this.updateLanguage();
+      return;
+    }
+
+    this.savingStroke = false;
     this.tracing = false;
     this.awaitingNextAction = true;
     this.tracer.setEnabled(false);
@@ -372,7 +394,9 @@ export class TraceTask {
     this.elements.stateCountUnit.textContent = t("trace.stateCountUnit");
     this.elements.currentStatesLabel.textContent = t("trace.currentStates");
     this.elements.traceQuestion.textContent = t("trace.question");
-    this.elements.confirmButton.textContent = t("trace.confirm");
+    this.elements.confirmButton.textContent = t(
+      this.savingStroke ? "trace.savingStroke" : "trace.confirm",
+    );
     this.elements.redoButton.textContent = t("trace.redo");
     this.elements.nextStrokeButton.textContent = t("trace.nextStroke");
     this.elements.finishButton.textContent = t("trace.finishCharacter");

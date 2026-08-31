@@ -78,22 +78,3 @@ export function buildCsv(session, tasks, exportedAt = new Date()) {
 
   return [COLUMNS.join(","), ...rows.map(toCsvRow)].join("\r\n");
 }
-
-export function createCsvFilename(session, now = new Date()) {
-  const date = now.toISOString().replaceAll(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
-  const shortId = session.sessionId.split("-")[0];
-  return `calligraphy_${date}_${shortId}_${session.status}.csv`;
-}
-
-export function downloadCsv(session, tasks, now = new Date()) {
-  const csv = buildCsv(session, tasks, now);
-  const blob = new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = createCsvFilename(session, now);
-  document.body.append(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}

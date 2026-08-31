@@ -26,6 +26,13 @@ export class CanvasTracer {
     const bounds = this.canvas.getBoundingClientRect();
     if (!bounds.width || !bounds.height) return;
 
+    const previous = document.createElement("canvas");
+    previous.width = this.canvas.width;
+    previous.height = this.canvas.height;
+    if (previous.width && previous.height) {
+      previous.getContext("2d").drawImage(this.canvas, 0, 0);
+    }
+
     const pixelRatio = window.devicePixelRatio || 1;
     this.canvas.width = bounds.width * pixelRatio;
     this.canvas.height = bounds.height * pixelRatio;
@@ -34,6 +41,19 @@ export class CanvasTracer {
     this.context.lineJoin = "round";
     this.context.strokeStyle = "#168dcc";
     this.context.lineWidth = 5;
+    if (previous.width && previous.height) {
+      this.context.drawImage(
+        previous,
+        0,
+        0,
+        previous.width,
+        previous.height,
+        0,
+        0,
+        bounds.width,
+        bounds.height,
+      );
+    }
   }
 
   setEnabled(enabled) {
@@ -86,29 +106,38 @@ export class CanvasTracer {
   }
 
   createPreview(width, height) {
-    const preview = document.createElement("canvas");
-    preview.width = width;
-    preview.height = height;
+    return this.createStrokeCanvas(width, height);
+  }
 
-    const previewContext = preview.getContext("2d");
-    previewContext.strokeStyle = "#168dcc";
-    previewContext.lineWidth = 5;
-    previewContext.lineCap = "round";
+  createStrokeCanvas(width, height) {
+    const output = document.createElement("canvas");
+    output.width = Math.max(1, Math.round(width));
+    output.height = Math.max(1, Math.round(height));
+    output.getContext("2d").drawImage(
+      this.canvas,
+      0,
+      0,
+      this.canvas.width,
+      this.canvas.height,
+      0,
+      0,
+      output.width,
+      output.height,
+    );
+    return output;
+  }
 
-    for (let index = 1; index < this.points.length; index += 1) {
-      previewContext.beginPath();
-      previewContext.moveTo(
-        (this.points[index - 1].x / this.canvas.clientWidth) * width,
-        (this.points[index - 1].y / this.canvas.clientHeight) * height,
-      );
-      previewContext.lineTo(
-        (this.points[index].x / this.canvas.clientWidth) * width,
-        (this.points[index].y / this.canvas.clientHeight) * height,
-      );
-      previewContext.stroke();
-    }
-
-    return preview;
+  createStrokePngBlob(longEdge) {
+    const sourceWidth = this.canvas.clientWidth;
+    const sourceHeight = this.canvas.clientHeight;
+    const scale = longEdge / Math.max(sourceWidth, sourceHeight);
+    const output = this.createStrokeCanvas(sourceWidth * scale, sourceHeight * scale);
+    return new Promise((resolve, reject) => {
+      output.toBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error("The stroke PNG could not be created."));
+      }, "image/png");
+    });
   }
 
   destroy() {

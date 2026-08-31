@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildCsv, createCsvFilename } from "../site/assets/js/csv-exporter.js";
+import { buildCsv } from "../site/assets/js/csv-exporter.js";
 import { TASKS } from "../site/assets/js/config.js";
 import { createSession, ensureResponse } from "../site/assets/js/session-store.js";
 
@@ -29,11 +29,4 @@ test("CSV 包含会话、笔画与选择结果，但不包含轨迹坐标", () =
   assert.match(csv, /"choice"/);
   assert.match(csv, /"许\.mp3"/);
   assert.doesNotMatch(lines[0], /coordinate|trace_points|point_x|point_y/);
-});
-
-test("CSV 文件名包含实验状态", () => {
-  const session = createSession();
-  session.status = "completed";
-  const filename = createCsvFilename(session, new Date("2026-08-31T12:34:56.000Z"));
-  assert.match(filename, /^calligraphy_20260831T123456Z_.+_completed\.csv$/);
 });
