@@ -2,7 +2,7 @@
 
 这是一个面向被试的静态网页实验，共 3 个固定题型、18 道固定顺序题目。网页不需要数据库或运行时后端，可直接发布到 GitHub Pages、Nginx 或任意静态文件服务器。实验进度保存在被试当前浏览器中，完成或提前结束时由被试下载包含 CSV 和笔画图片的 ZIP，并发送给研究人员。
 
-在线实验地址：<https://minne-wu.github.io/calligraphy-music-experiment/>
+在线实验地址：<https://zhaoo-maker123.github.io/calligraphy-music-experiment/>
 
 ## 实验流程
 
