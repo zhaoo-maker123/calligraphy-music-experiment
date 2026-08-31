@@ -183,6 +183,9 @@ export class TraceTask {
       && !this.savingStroke;
 
     this.elements.confirmButton.disabled = !canConfirm;
+    this.elements.confirmButton.textContent = t(
+      this.savingStroke ? "trace.savingStroke" : "trace.confirm",
+    );
     this.elements.stateCount.textContent = String(this.states.length);
     this.elements.timeline.textContent = this.states.length
       ? this.states.map(translateState).join(" · ")
